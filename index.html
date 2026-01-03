@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Controle Financeiro Turbo</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<style>
+:root{
+    --rosa:#f6c1cc;
+    --creme:#fff7ed;
+    --chocolate:#5a3e36;
+    --dourado:#c9a24d;
+    --branco:#ffffff;
+}
+
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Poppins',sans-serif;}
+
+body{
+    background:linear-gradient(135deg,var(--creme),#fdecef);
+    padding:20px;
+    color:var(--chocolate);
+}
+
+header{text-align:center;margin-bottom:25px;}
+header h1{font-weight:600;}
+header p{font-size:14px;color:#7a5c52;}
+
+.cards{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+    gap:15px;
+    margin-bottom:20px;
+}
+
+.card{
+    background:var(--branco);
+    border-radius:16px;
+    padding:20px;
+    box-shadow:0 10px 25px rgba(0,0,0,.08);
+    text-align:center;
+}
+
+.card h3{font-size:14px;font-weight:500;margin-bottom:5px;}
+.card span{font-size:22px;font-weight:600;color:var(--dourado);}
+
+.section{
+    background:var(--branco);
+    border-radius:16px;
+    padding:20px;
+    box-shadow:0 10px 25px rgba(0,0,0,.08);
+    margin-bottom:25px;
+}
+
+.form-group{margin-bottom:12px;}
+label{font-size:13px;}
+
+input,select{
+    width:100%;
+    padding:10px;
+    border-radius:10px;
+    border:1px solid #e5d2c8;
+}
+
+button{
+    padding:8px 12px;
+    border:none;
+    border-radius:12px;
+    background:var(--rosa);
+    color:var(--chocolate);
+    font-weight:600;
+    cursor:pointer;
+}
+
+button:hover{opacity:.9;}
+
+.lista{display:grid;gap:12px;margin-top:10px;}
+
+.item{
+    background:#fff;
+    padding:15px;
+    border-radius:14px;
+    box-shadow:0 5px 15px rgba(0,0,0,.06);
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+}
+
+small{color:#7a5c52;}
+
+canvas{width:100%;max-height:300px;}
+</style>
+</head>
+<body>
+
+<header>
+    <h1>💰 Controle Financeiro Turbo</h1>
+    <p>Gestão completa, visual e organizada</p>
+</header>
+
+<section class="cards">
+    <div class="card"><h3>Total Receitas</h3><span id="totalReceitas">R$ 0,00</span></div>
+    <div class="card"><h3>Despesas Variáveis</h3><span id="totalDespesasVariaveis">R$ 0,00</span></div>
+    <div class="card"><h3>Despesas Fixas</h3><span id="totalDespesasFixas">R$ 0,00</span></div>
+    <div class="card"><h3>Saldo</h3><span id="saldo">R$ 0,00</span></div>
+</section>
+
+<button onclick="exportarExcel()">📥 Exportar para Excel</button>
+
+<section class="section">
+<h2>📅 Novo Lançamento</h2>
+
+<div class="form-group">
+<label>Data</label>
+<input type="date" id="dataLanc">
+</div>
+
+<div class="form-group">
+<label>Descrição</label>
+<input id="descLanc">
+</div>
+
+<div class="form-group">
+<label>Valor (R$)</label>
+<input id="valorLanc" type="number" step="0.01">
+</div>
+
+<div class="form-group">
+<label>Tipo</label>
+<select id="tipoLanc">
+<option value="receita">Receita</option>
+<option value="despesa">Despesa Variável</option>
+<option value="fixa">Despesa Fixa</option>
+</select>
+</div>
+
+<button onclick="adicionarLancamento()">Adicionar</button>
+<div class="lista" id="listaLanc"></div>
+</section>
+
+<section class="section">
+<h2>📊 Gráficos</h2>
+<canvas id="graficoPizza"></canvas>
+<canvas id="graficoLinha"></canvas>
+</section>
+
+<script>
+// DOM
+const totalReceitasElem = document.getElementById("totalReceitas");
+const totalDespesasVariaveisElem = document.getElementById("totalDespesasVariaveis");
+const totalDespesasFixasElem = document.getElementById("totalDespesasFixas");
+const saldoElem = document.getElementById("saldo");
+const listaLanc = document.getElementById("listaLanc");
+
+// Dados
+let lancamentos = JSON.parse(localStorage.getItem("lancamentos")) || [];
+const fmt = v => v.toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+
+// Adicionar lançamento
+function adicionarLancamento(){
+    const data = document.getElementById("dataLanc").value;
+    const desc = document.getElementById("descLanc").value;
+    const valor = parseFloat(document.getElementById("valorLanc").value);
+    const tipo = document.getElementById("tipoLanc").value;
+
+    if(!data || !desc || isNaN(valor)) return alert("Preencha todos os campos!");
+
+    lancamentos.push({data, desc, valor, tipo});
+    localStorage.setItem("lancamentos", JSON.stringify(lancamentos));
+
+    document.getElementById("dataLanc").value = "";
+    document.getElementById("descLanc").value = "";
+    document.getElementById("valorLanc").value = "";
+
+    render();
+}
+
+// Editar lançamento
+function editar(index){
+    const l = lancamentos[index];
+    const novaDesc = prompt("Editar descrição:", l.desc);
+    if(novaDesc===null) return;
+    const novoValor = parseFloat(prompt("Editar valor (R$):", l.valor));
+    if(isNaN(novoValor)) return alert("Valor inválido!");
+    const novoTipo = prompt("Editar tipo (receita, despesa, fixa):", l.tipo);
+    if(!['receita','despesa','fixa'].includes(novoTipo)) return alert("Tipo inválido!");
+
+    lancamentos[index] = {data:l.data, desc:novaDesc, valor:novoValor, tipo:novoTipo};
+    localStorage.setItem("lancamentos", JSON.stringify(lancamentos));
+    render();
+}
+
+// Renderizar
+let chartPizza, chartLinha;
+function render(){
+    listaLanc.innerHTML = "";
+    let totalReceitas=0, totalDespesasVariaveis=0, totalDespesasFixas=0;
+
+    lancamentos.sort((a,b)=> new Date(a.data) - new Date(b.data));
+
+    lancamentos.forEach((l,i)=>{
+        if(l.tipo==="receita") totalReceitas += l.valor;
+        else if(l.tipo==="despesa") totalDespesasVariaveis += l.valor;
+        else if(l.tipo==="fixa") totalDespesasFixas += l.valor;
+
+        listaLanc.innerHTML += `
+        <div class="item">
+            <div>
+                <strong>${l.desc}</strong><br>
+                <small>${l.data} | ${l.tipo}</small>
+            </div>
+            <strong>${fmt(l.valor)}</strong>
+            <button onclick="editar(${i})">✏️ Editar</button>
+        </div>`;
+    });
+
+    totalReceitasElem.innerText = fmt(totalReceitas);
+    totalDespesasVariaveisElem.innerText = fmt(totalDespesasVariaveis);
+    totalDespesasFixasElem.innerText = fmt(totalDespesasFixas);
+    saldoElem.innerText = fmt(totalReceitas - totalDespesasVariaveis - totalDespesasFixas);
+
+    atualizarGraficos();
+}
+
+// Gráficos
+function atualizarGraficos(){
+    const ctxPizza = document.getElementById('graficoPizza').getContext('2d');
+    if(chartPizza) chartPizza.destroy();
+
+    const receitas = lancamentos.filter(l=>l.tipo==="receita").reduce((a,b)=>a+b.valor,0);
+    const despesasVariaveis = lancamentos.filter(l=>l.tipo==="despesa").reduce((a,b)=>a+b.valor,0);
+    const despesasFixas = lancamentos.filter(l=>l.tipo==="fixa").reduce((a,b)=>a+b.valor,0);
+
+    chartPizza = new Chart(ctxPizza, {
+        type: 'pie',
+        data:{
+            labels:['Receitas','Despesas Variáveis','Despesas Fixas'],
+            datasets:[{data:[receitas,despesasVariaveis,despesasFixas],backgroundColor:['#f6c1cc','#d97f8f','#5a3e36']}]
+        },
+        options:{
+            plugins:{
+                tooltip:{
+                    callbacks:{
+                        label: function(context){
+                            const value = context.raw;
+                            return `${context.label}: ${fmt(value)}`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    const ctxLinha = document.getElementById('graficoLinha').getContext('2d');
+    if(chartLinha) chartLinha.destroy();
+
+    const datas = [...new Set(lancamentos.map(l=>l.data))].sort();
+    const saldoAcumulado = datas.map(d=>{
+        let soma=0;
+        lancamentos.forEach(l=>{
+            if(l.data <= d){
+                if(l.tipo==="receita") soma+=l.valor;
+                else soma-=l.valor;
+            }
+        });
+        return soma;
+    });
+
+    chartLinha = new Chart(ctxLinha, {
+        type:'line',
+        data:{
+            labels:datas,
+            datasets:[{label:'Saldo Acumulado',data:saldoAcumulado,borderColor:'#5a3e36',backgroundColor:'rgba(90,62,54,0.2)',fill:true}]
+        },
+        options:{responsive:true}
+    });
+}
+
+// Excel bonito
+function exportarExcel(){
+    const aba = lancamentos.map(l=>({
+        Data:l.data,
+        Descrição:l.desc,
+        Tipo:l.tipo,
+        Valor:l.valor
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(aba);
+
+    const range = XLSX.utils.decode_range(ws['!ref']);
+    for(let C = range.s.c; C <= range.e.c; ++C){
+        const cell_address = {c:C, r:0};
+        const cell_ref = XLSX.utils.encode_cell(cell_address);
+        if(!ws[cell_ref]) continue;
+        ws[cell_ref].s = {
+            font: {bold:true, color:{rgb:"FFFFFF"}},
+            fill: {fgColor:{rgb:"5A3E36"}},
+            alignment: {horizontal:"center"}
+        };
+    }
+
+    for(let R=1; R<=range.e.r; ++R){
+        const cell_address = {c:3, r:R};
+        const cell_ref = XLSX.utils.encode_cell(cell_address);
+        if(ws[cell_ref]){
+            ws[cell_ref].t = 'n';
+            ws[cell_ref].z = '"R$"#,##0.00';
+        }
+    }
+
+    ws['!cols'] = [
+        {wpx:80}, {wpx:200}, {wpx:120}, {wpx:100}
+    ];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Lançamentos");
+    XLSX.writeFile(wb,"Controle_Financeiro_Turbo.xlsx");
+}
+
+// Inicial
+render();
+</script>
+
+</body>
+</html>

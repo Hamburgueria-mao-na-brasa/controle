@@ -1,0 +1,49 @@
+body {
+  font-family: Arial, sans-serif;
+  background: #1e293b;
+  color: #fff;
+}
+
+.container {
+  max-width: 900px;
+  margin: auto;
+  padding: 20px;
+}
+
+.abas button {
+  padding: 10px 20px;
+  margin-right: 10px;
+  cursor: pointer;
+}
+
+.filtros select {
+  margin: 10px 5px;
+  padding: 6px;
+}
+
+form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit,minmax(150px,1fr));
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+input, select, button {
+  padding: 8px;
+}
+
+ul {
+  list-style: none;
+}
+
+li {
+  background: rgba(255,255,255,0.1);
+  margin-bottom: 8px;
+  padding: 10px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.hidden {
+  display: none;
+}
