@@ -99,7 +99,7 @@ canvas{width:100%;max-height:300px;}
 
 <header>
     <h1>💰 Controle Financeiro Turbo</h1>
-    <p>Gestão completa, visual e organizada</p>
+    <p>🍰 Transforme seu dinheiro em doces resultados!</p>
 </header>
 
 <section class="cards">
@@ -194,6 +194,14 @@ function editar(index){
     render();
 }
 
+// Remover lançamento
+function remover(index){
+    if(!confirm("Deseja realmente excluir este lançamento?")) return;
+    lancamentos.splice(index,1);
+    localStorage.setItem("lancamentos", JSON.stringify(lancamentos));
+    render();
+}
+
 // Renderizar
 let chartPizza, chartLinha;
 function render(){
@@ -213,8 +221,11 @@ function render(){
                 <strong>${l.desc}</strong><br>
                 <small>${l.data} | ${l.tipo}</small>
             </div>
+            <div style="display:flex;gap:5px;">
+                <button onclick="editar(${i})">✏️ Editar</button>
+                <button onclick="remover(${i})">❌ Excluir</button>
+            </div>
             <strong>${fmt(l.valor)}</strong>
-            <button onclick="editar(${i})">✏️ Editar</button>
         </div>`;
     });
 
